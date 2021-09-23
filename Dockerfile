@@ -1,4 +1,4 @@
-FROM gcc:latest
+FROM gcc:10.3-buster
 
 # Install necessary packages.
 RUN apt-get update && apt-get install -y --no-install-recommends \
