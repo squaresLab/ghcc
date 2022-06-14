@@ -20,8 +20,11 @@ try:
         confirm = input(f"This will delete {parent} / {folder}. Confirm? [y/N] ")
         yes = confirm.lower() in ["y", "yes"]
     if yes:
-        ghcc.utils.run_docker_command(["rm", "-rf", f"/usr/src/{folder}"],
-                                      user=0, directory_mapping={parent: "/usr/src"})
+        ghcc.utils.run_docker_command(
+            ["rm", "-rf", f"/usr/src/{folder}"],
+            user=0,
+            directory_mapping={parent: "/usr/src"},
+        )
 except subprocess.CalledProcessError as e:
     flutes.log(f"Command failed with retcode {e.returncode}", "error")
     output = e.output.decode("utf-8")
