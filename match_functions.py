@@ -84,10 +84,23 @@ class Arguments(argtyped.Arguments):
 
 
 class RepoInfo(NamedTuple):
+    """
+    Information for a repository
+
+    Attributes
+    ----------
+
+    idx : int
+    repo_owner : str
+    repo_name : str
+    makefiles : Dict[str, Dict[str, str]]
+        maps make_dir to a dictionary mapping binary paths to their hash
+    """
+
     idx: int
     repo_owner: str
     repo_name: str
-    makefiles: Dict[str, Dict[str, str]]  # make_dir -> (binary_path -> binary_sha256)
+    makefiles: Dict[str, Dict[str, str]]
 
 
 class MatchedFunction(NamedTuple):
