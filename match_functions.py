@@ -104,16 +104,29 @@ class RepoInfo(NamedTuple):
 
 
 class MatchedFunction(NamedTuple):
-    # Source code & decompiler info
+    """
+    Source code & decompiler info
+
+    Attributes
+    ----------
+    file_path : str
+    binary_hash : str
+    func_name : str
+    variable_names : Dict[str, Tuple[str, str]]
+        dictionary mapping a variable id to a tuple of its decompiled variable
+        name and original variable name
+    original_tokens : List[str]
+    decompiled_tokens : List[str]
+    original_ast_json : ghcc.parse.JSONNode
+    decompiled_ast_json : Optional[ghcc.parse.JSONNode]
+    """
+
     file_path: str
     binary_hash: str
-    # Code
     func_name: str
-    variable_names: Dict[
-        str, Tuple[str, str]
-    ]  # (var_id) -> (decompiled_var_name, original_var_name)
-    original_tokens: List[str]  # tokenized code
-    decompiled_tokens: List[str]  # tokenized code
+    variable_names: Dict[str, Tuple[str, str]]
+    original_tokens: List[str]
+    decompiled_tokens: List[str]
     original_ast_json: ghcc.parse.JSONNode
     decompiled_ast_json: Optional[ghcc.parse.JSONNode]
 
