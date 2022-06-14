@@ -23,34 +23,63 @@ from ghcc.repo import CloneErrorType
 
 
 class Arguments(argtyped.Arguments):
+    """
+    Arguments for main
+
+    Attributes
+    ----------
+    repo_list_file : str
+    clone_folder : str
+        where cloned repositories are stored (temporarily)
+    binary_folder : str
+        where compiled binaries are stored
+    archive_folder : str
+        where archived repositories are stored
+    n_procs : int
+        0 for single-threaded execution
+    log_file : str
+    clone_timeout : Optional[int]
+    force_reclone : Switch
+    compile_timeout : Optional[int]
+    force_recompile : Switch
+    docker_batch_compile : Switch
+    compression_type : Choices["gzip", "xz"]
+    max_archive_size : Optional[int]
+    record_libraries : Optional[str]
+        gather libraries used in Makefiles and print to the specified file
+    logging_level : Choices[flutes.get_logging_levels()]
+    max_repos : Optional[int]
+        maximum number of repositories to process (ignoring non-existent)
+    recursive_clone : Switch
+        if True, use `--recursive` when `git clone`
+    write_db : Switch
+        only modify the DB when True
+    record_metainfo : Switch
+        if True, record a bunch of other stuff
+    gcc_override_flags: Optional[str]
+        GCC flags to use during compilation, e.g. "-O2 -march=x86-64"
+    """
+
     repo_list_file: str
-    clone_folder: str = "repos/"  # where cloned repositories are stored (temporarily)
-    binary_folder: str = "binaries/"  # where compiled binaries are stored
-    archive_folder: str = "archives/"  # where archived repositories are stored
-    n_procs: int = 0  # 0 for single-threaded execution
+    clone_folder: str = "repos/"
+    binary_folder: str = "binaries/"
+    archive_folder: str = "archives/"
+    n_procs: int = 0
     log_file: str = "log.txt"
-    clone_timeout: Optional[int] = 600  # wait up to 10 minutes
-    force_reclone: Switch = False  # if not, use archives when possible
-    compile_timeout: Optional[int] = 900  # wait up to 15 minutes
+    clone_timeout: Optional[int] = 600
+    force_reclone: Switch = False
+    compile_timeout: Optional[int] = 900
     force_recompile: Switch = False
     docker_batch_compile: Switch = True
     compression_type: Choices["gzip", "xz"] = "gzip"
-    max_archive_size: Optional[
-        int
-    ] = 100 * 1024 * 1024  # only archive repos no larger than 100MB.
-    record_libraries: Optional[
-        str
-    ] = None  # gather libraries used in Makefiles and print to the specified file
+    max_archive_size: Optional[int] = 100 * 1024 * 1024
+    record_libraries: Optional[str] = None
     logging_level: Choices[flutes.get_logging_levels()] = "info"
-    max_repos: Optional[
-        int
-    ] = None  # maximum number of repositories to process (ignoring non-existent)
-    recursive_clone: Switch = True  # if True, use `--recursive` when `git clone`
-    write_db: Switch = True  # only modify the DB when True
-    record_metainfo: Switch = False  # if True, record a bunch of other stuff
-    gcc_override_flags: Optional[
-        str
-    ] = None  # GCC flags to use during compilation, e.g. "-O2 -march=x86-64"
+    max_repos: Optional[int] = None
+    recursive_clone: Switch = True
+    write_db: Switch = True
+    record_metainfo: Switch = False
+    gcc_override_flags: Optional[str] = None
 
 
 class RepoInfo(NamedTuple):
@@ -61,10 +90,22 @@ class RepoInfo(NamedTuple):
 
 
 class PipelineMetaInfo(TypedDict):
-    r"""Meta-info that might be required for experimentations."""
-    num_makefiles: int  # total number of Makefiles
-    has_gitmodules: bool  # whether repo contains a .gitmodules file
-    makefiles_using_automake: int  # how many Makefiles uses `automake`
+    """
+    Meta-info that might be required for experimentations.
+
+    Attributes
+    ----------
+    num_makefiles : int
+        total number of Makefiles
+    has_gitmodules : bool
+        True if the repo contains a .gitmodules file
+    makefiles_using_automake : int
+        how many Makefiles use `automake`
+    """
+
+    num_makefiles: int
+    has_gitmodules: bool
+    makefiles_using_automake: int
 
 
 class PipelineResult(NamedTuple):
@@ -77,11 +118,11 @@ class PipelineResult(NamedTuple):
 
 
 def contains_in_file(file_path: str, text: str) -> bool:
-    r"""Check whether the file contains a specific piece of text in its first line.
+    """Check whether the file contains a specific piece of text in its first line.
 
     :param file_path: Path to the file.
     :param text: The piece of text to search for.
-    :return: ``True`` only if the file exists and contains the text in its first line.
+    :return: True only if the file exists and contains the text in its first line.
     """
     if not os.path.exists(file_path):
         return False
