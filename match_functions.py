@@ -192,17 +192,18 @@ def find_matching_rbrace(tokens: List[ghcc.parse.Token], start: int) -> int:
 def serialize(
     func_ast: ASTNode, tokens: List[ghcc.parse.Token]
 ) -> Tuple[ghcc.parse.JSONNode, List[str]]:
-    r"""Generate serialized AST and lexed tokens for a single function.
+    """Generate serialized AST and lexed tokens for a single function.
 
     :param func_ast:
     :param tokens:
     :return:
     """
     ast_dict = ghcc.parse.ast_to_dict(func_ast, tokens)
-    # Instead of generating and lexing the code again, we find the function boundaries based on heuristics:
+    # Instead of generating and lexing the code again, we find the
+    # function boundaries based on heuristics:
     # - Left boundary is given by smallest token position in tree.
-    # - Right boundary is the matching right curly brace given the token position of the function body
-    #   compound statement.
+    # - Right boundary is the matching right curly brace given the token
+    #   position of the function body compound statement.
     inf = len(tokens)
     COORD = ghcc.parse.TOKEN_POS_ATTR
     find_min_pos_fn = lambda node, xs: min(min(xs, default=inf), node[COORD] or inf)
@@ -237,10 +238,8 @@ DECOMPILED_VAR_REGEX = re.compile(r"@@VAR_(\d+)@@([^@]+)@@([_a-zA-Z0-9]+)")
 # Match register allocation annotations in decompiled code.
 DECOMPILED_REG_ALLOC_REGEX = re.compile(r"@<[a-z0-9]+>")
 # Match preprocessor comments.
-LINE_CONTROL_REGEX = re.compile(
-    r"^#[^\n]*\n", flags=re.MULTILINE
-)  # also chomp the newline symbol
-
+# also chomp the newline symbol
+LINE_CONTROL_REGEX = re.compile(r"^#[^\n]*\n", flags=re.MULTILINE)
 IDENTIFIER_CHARS = string.ascii_letters + string.digits + "_"
 
 
@@ -257,10 +256,13 @@ def match_functions(
 ) -> Result:
     # Directions:
     # 1. Clone or extract from archive.
-    # 2. For each Makefile, rerun the compilation process with the flag "-E", so only the preprocessor is run.
-    #    This probably won't take long as the compiler exits after running the processor, and linking would fail.
-    #    Also, consider using "-nostdlib -Ipath/to/fake_libc_include" as suggested by `pycparser`.
-    # 3. The .o files are now preprocessed C code. Parse them using `pycparser` to obtain a list of functions.
+    # 2. For each Makefile, rerun the compilation process with the flag "-E",
+    #    so only the preprocessor is run. This probably won't take long as the
+    #    compiler exits after running the processor, and linking would fail.
+    #    Also, consider using "-nostdlib -Ipath/to/fake_libc_include" as
+    #    suggested by `pycparser`.
+    # 3. The .o files are now preprocessed C code. Parse them using `pycparser`
+    #    to obtain a list of functions.
 
     start_time = time.time()
     total_files = sum(len(makefile) for makefile in repo_info.makefiles.values())
@@ -358,7 +360,8 @@ def match_functions(
                     code, filename=os.path.join(repo_full_name, path)
                 )
             except (pycparser.c_parser.ParseError, AssertionError) as e:
-                # For some reason `pycparser` uses `assert`s in places where there should have been a check.
+                # For some reason `pycparser` uses `assert`s in places
+                # where there should have been a check.
                 flutes.log(
                     f"{repo_full_name}: Parser error when processing file "
                     f"{code_path} ({sha}): {str(e)}",
@@ -394,14 +397,15 @@ def match_functions(
                     decompiled_data = json.loads(j)
                 except json.JSONDecodeError as e:
                     flutes.log(
-                        f"{repo_full_name}: Decode error when reading JSON file at {json_path}: "
-                        f"{str(e)}",
+                        f"{repo_full_name}: Decode error when reading JSON file"
+                        f"at {json_path}: {str(e)}",
                         "error",
                     )
                     continue
                 decompiled_code = decompiled_data["raw_code"]
                 # Store the variable names used in the function.
-                # We use a random string as the identifier prefix. Sadly, C89 (and `pycparser`) doesn't support Unicode.
+                # We use a random string as the identifier prefix. Sadly, C89
+                # (and `pycparser`) doesn't support Unicode.
                 for length in range(3, 10 + 1):
                     var_identifier_prefix = "v" + "".join(
                         random.choices(string.ascii_lowercase, k=length)
@@ -411,14 +415,13 @@ def match_functions(
                 else:
                     # No way this is happening, right?
                     flutes.log(
-                        f"{repo_full_name}: Could not find valid identifier prefix for "
-                        f"{func_name} in {code_path} ({sha})",
+                        f"{repo_full_name}: Could not find valid identifier prefix "
+                        f"for {func_name} in {code_path} ({sha})",
                         "error",
                     )
                     continue
-                variables: Dict[
-                    str, Tuple[str, str]
-                ] = {}  # (var_id) -> (decompiled_name, original_name)
+                # (var_id) -> (decompiled_name, original_name)
+                variables: Dict[str, Tuple[str, str]] = {}
                 for match in DECOMPILED_VAR_REGEX.finditer(decompiled_code):
                     var_id, decompiled_name, original_name = match.groups()
                     var_id = f"{var_identifier_prefix}_{var_id}"
@@ -428,23 +431,29 @@ def match_functions(
                         variables[var_id] = (decompiled_name, original_name)
                 decompiled_var_names[func_name] = variables
                 # Remove irregularities in decompiled code to make the it parsable:
-                # - Replace `@@VAR` with special identifiers (literally anything identifier that doesn't clash).
+                # - Replace `@@VAR` with special identifiers (literally anything
+                #   identifier that doesn't clash).
                 # - Remove the register allocation indication in `var@<rdi>`.
                 decompiled_code = DECOMPILED_VAR_REGEX.sub(
                     rf"{var_identifier_prefix}_\1", decompiled_code
                 )
                 decompiled_code = DECOMPILED_REG_ALLOC_REGEX.sub("", decompiled_code)
                 if func_name.startswith("_"):
-                    # For some reason, Hexrays would chomp off one leading underscore from function names in their
-                    # generated code, which might lead to corrupt code (`_01inverse` -> `01inverse`). Here we
-                    # heuristically try to find and replace the changed function name.
-                    decompiled_code = re.sub(  # replace all identifiers with matching name
+                    # For some reason, Hexrays would chomp off one leading
+                    # underscore from function names in their generated code,
+                    # which might lead to corrupt code (`_01inverse` -> `01inverse`).
+                    # Here we heuristically try to find and replace the changed
+                    # function name.
+
+                    # replace all identifiers with matching name
+                    decompiled_code = re.sub(
                         r"(?<![a-zA-Z0-9_])" + func_name[1:] + r"(?![a-zA-Z0-9_])",
                         func_name,
                         decompiled_code,
                     )
-                    # Note that this doesn't fix references of the function in other functions. But really, why would
-                    # someone name their function `_01inverse`?
+                    # Note that this doesn't fix references of the function in
+                    # other functions. But really, why would someone name their
+                    # function `_01inverse`?
                 decompiled_funcs[func_name] = decompiled_code
 
             # Generate code replacing original functions with decompiled functions.
@@ -457,8 +466,8 @@ def match_functions(
                 code_to_parse = ghcc.parse.preprocess(code_to_preprocess)
             except ghcc.parse.PreprocessError as e:
                 msg = (
-                    f"{repo_full_name}: GCC return value nonzero for decompiled code of "
-                    f"{code_path} ({sha})"
+                    f"{repo_full_name}: GCC return value nonzero for "
+                    f"decompiled code of {code_path} ({sha})"
                 )
                 if len(e.args) > 0:
                     msg += ":\n" + str(e)
@@ -481,7 +490,8 @@ def match_functions(
                 )
                 has_error = True
 
-                # We don't have ASTs for decompiled functions, but we can still dump the code.
+                # We don't have ASTs for decompiled functions, but we can still dump
+                # the code.
                 # Use the dummy typedefs to extract functions.
                 code_lines = code_to_parse.split("\n")
                 func_begin_end: Dict[str, List[Optional[int]]] = defaultdict(
@@ -522,7 +532,8 @@ def match_functions(
                 for func_name in decompiled_funcs.keys():
                     original_func_ast = function_asts[func_name]
                     if func_name not in decompiled_func_asts:
-                        # Maybe there's other Hexrays-renamed functions that we didn't fix, just ignore them.
+                        # Maybe there's other Hexrays-renamed functions that we
+                        # didn't fix, just ignore them.
                         continue
                     decompiled_func_ast = decompiled_func_asts[func_name]
                     original_ast_json, original_func_tokens = serialize(
@@ -629,9 +640,8 @@ def _iter_repos(
                 for path, sha in zip(makefile["binaries"], makefile["sha256"]):
                     if sha in binaries:
                         mapping[path] = sha
-                        binaries.remove(
-                            sha
-                        )  # the same binary may be generated in multiple Makefiles
+                        # the same binary may be generated in multiple Makefiles
+                        binaries.remove(sha)
                 if len(mapping) > 0:
                     makefiles[makefile["directory"]] = mapping
             if len(makefiles) == 0:
@@ -731,7 +741,7 @@ def main() -> None:
                 # Exception occurred.
                 if args.exit_on_exception:
                     flutes.log(
-                        f"Exception occurred, exiting because 'exit_on_exception' is True",
+                        "Exception occurred, exiting because 'exit_on_exception' is True",
                         "warning",
                     )
                     break
