@@ -30,27 +30,57 @@ import ghcc
 
 
 class Arguments(argtyped.Arguments):
-    archive_dir: Optional[str] = "archives/"  # directory containing repo archives
-    decompile_dir: str = "decompile_output_fixed/"  # directory containing decompiled output (JSONL files)
+    """
+    Arguments for matching functions
+
+    Attributes
+    ----------
+    archive_dir : Optional[str]
+        directory containing repo archives
+    decompile_dir : str
+        directory containing decompiled output
+    temp_dir : str
+    log_file : str
+    output_dir : str
+        directory to save matching functions
+    use_fake_libc_headers : Switch
+        use pycparser fake libc headers to safe time
+    n_procs : int
+        number of processes
+    max_repos : Optional[int]
+        maximum number of repositories to process (ignoring non-existent)
+    exit_on_exception : Switch
+    pdb : Switch
+    write_db : Switch
+    skip_to : Optional[str]
+        skip to specified repository
+    repo_binary_info_cache_path : Optional[str]
+        if specified, load/save repo_binaries instead of loading from DB
+    verbose : Switch
+    preprocess_timeout : Optional[int]
+    show_progres : Switch
+        show a progress bar for each worker process; has a large overhead
+    force_reprocess : Switch
+        also process repos that are recorded as processed in the DB
+    """
+
+    archive_dir: Optional[str] = "archives/"
+    decompile_dir: str = "decompile_output_fixed/"
     temp_dir: str = "repos/"
     log_file: str = "match-log.txt"
-    output_dir: str = "match_output/"  # directory to save matching functions
-    use_fake_libc_headers: Switch = True  # use pycparser fake libc headers to save time
-    n_procs: int = 0  # number of processes
-    max_repos: Optional[
-        int
-    ] = None  # maximum number of repositories to process (ignoring non-existent)
+    output_dir: str = "match_output/"
+    use_fake_libc_headers: Switch = True
+    n_procs: int = 0
+    max_repos: Optional[int] = None
     exit_on_exception: Switch = False
     pdb: Switch = False
     write_db: Switch = True
-    skip_to: Optional[str]  # skip to specified repository
-    repo_binary_info_cache_path: Optional[
-        str
-    ]  # if specified, load/save repo_binaries instead of loading from DB
+    skip_to: Optional[str]
+    repo_binary_info_cache_path: Optional[str]
     verbose: Switch = False
     preprocess_timeout: Optional[int] = 600
-    show_progress: Switch = False  # show a progress bar for each worker process; large overhead
-    force_reprocess: Switch = False  # also process repos that are recorded as processed in DB
+    show_progress: Switch = False
+    force_reprocess: Switch = False
 
 
 class RepoInfo(NamedTuple):
