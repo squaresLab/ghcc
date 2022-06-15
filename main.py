@@ -18,6 +18,7 @@ from argtyped import Choices, Switch
 from mypy_extensions import TypedDict
 
 import logging
+import coloredlogs
 
 import ghcc
 from ghcc.database import RepoDB
@@ -519,8 +520,9 @@ class MetaInfo:
 
 
 def init_logger() -> None:
-    logging.basicConfig(
-        level=args.logging_level, format=LOG_FORMAT,
+    coloredlogs.DEFAULT_FIELD_STYLES["levelname"]["color"] = "cyan"
+    coloredlogs.install(
+        level=args.logging_level, fmt=LOG_FORMAT,
     )
 
 
