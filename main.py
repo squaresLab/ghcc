@@ -526,7 +526,7 @@ def main() -> None:
         # Only do this on the single-threaded case.
         flutes.register_ipython_excepthook()
 
-    init_logger(args)
+    init_logger(args.logging_level)
 
     logging.info("Running with arguments:\n" + args.to_string())
 

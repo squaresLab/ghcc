@@ -65,7 +65,6 @@ class Arguments(argtyped.Arguments):
         show a progress bar for each worker process; has a large overhead
     force_reprocess : Switch
         also process repos that are recorded as processed in the DB
-    logging_level : int
     """
 
     archive_dir: Optional[str] = "archives/"
@@ -85,7 +84,6 @@ class Arguments(argtyped.Arguments):
     preprocess_timeout: Optional[int] = 600
     show_progress: Switch = False
     force_reprocess: Switch = False
-    logging_level: int = logging.INFO
 
 
 class RepoInfo(NamedTuple):
@@ -690,10 +688,9 @@ def main() -> None:
         if args.n_procs == 0:
             globals()["match_functions"] = match_functions.__wrapped__
 
-    if args.verbose:
-        args.logging_level = logging.DEBUG
+    logging_level = logging.DEBUG if not args.verbose else logging.INFO
 
-    init_logger(args)
+    init_logger(logging_level)
     logging.info("Running with arguments:\n" + args.to_string())
 
     if os.path.exists(args.temp_dir):
