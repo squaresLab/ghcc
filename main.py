@@ -18,13 +18,11 @@ from argtyped import Choices, Switch
 from mypy_extensions import TypedDict
 
 import logging
-import coloredlogs
+from ghcc.logging import init_logger
 
 import ghcc
 from ghcc.database import RepoDB
 from ghcc.repo import CloneErrorType
-
-LOG_FORMAT = "[%(levelname)-7.7s] %(asctime)s %(message)s"
 
 
 class Arguments(argtyped.Arguments):
@@ -517,13 +515,6 @@ class MetaInfo:
         # f" ├─ New: {self.added_makefiles}, Missing: {self.missing_makefiles}\n" \
         # f" └─ Fail->Success: {self.fail_to_success}, Success->Fail: {self.success_to_fail}"
         return msg
-
-
-def init_logger(args: Arguments) -> None:
-    coloredlogs.DEFAULT_FIELD_STYLES["levelname"]["color"] = "cyan"
-    coloredlogs.install(
-        level=args.logging_level, fmt=LOG_FORMAT,
-    )
 
 
 def main() -> None:
