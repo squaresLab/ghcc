@@ -14,6 +14,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Callable, Dict, Iterator, List, NamedTuple, Optional, Set, Tuple
 
+import logging
+from ghcc.logging import init_logger
+
 import argtyped
 import flutes
 import pycparser
@@ -62,6 +65,7 @@ class Arguments(argtyped.Arguments):
         show a progress bar for each worker process; has a large overhead
     force_reprocess : Switch
         also process repos that are recorded as processed in the DB
+    logging_level : int
     """
 
     archive_dir: Optional[str] = "archives/"
@@ -81,6 +85,7 @@ class Arguments(argtyped.Arguments):
     preprocess_timeout: Optional[int] = 600
     show_progress: Switch = False
     force_reprocess: Switch = False
+    logging_level: int = logging.INFO
 
 
 class RepoInfo(NamedTuple):
@@ -170,10 +175,8 @@ with open(os.path.join(ghcc.parse.FAKE_LIBC_PATH, "_fake_gcc_ext.h")) as f:
 
 
 def exception_handler(e: Exception, repo_info: RepoInfo):
-    flutes.log_exception(
-        e,
+    logging.error(
         f"Exception occurred when processing {repo_info.repo_owner}/{repo_info.repo_name}",
-        force_console=True,
     )
 
 
@@ -282,7 +285,7 @@ def match_functions(
         )
         progress_bar.new(total=total_files, desc=process_name + f" [{repo_full_name}]")
 
-    flutes.log(f"Begin processing {repo_full_name} ({total_files} files)")
+    logging.info(f"Begin processing {repo_full_name} ({total_files} files)")
 
     if os.path.exists(archive_path):
         # Extract archive
@@ -299,9 +302,8 @@ def match_functions(
             folder_name="src",
         )
         if ret.error_type not in [None, ghcc.CloneErrorType.SubmodulesFailed]:
-            flutes.log(
-                f"Failed to clone {repo_full_name}: error type {ret.error_type}",
-                "error",
+            logging.error(
+                f"Failed to clone {repo_full_name}: error type {ret.error_type}"
             )
             # Return a dummy result so this repo is ignored in the future.
             return Result(repo_info.repo_owner, repo_info.repo_name, [], {}, 0, 0, 0)
@@ -362,10 +364,9 @@ def match_functions(
             except (pycparser.c_parser.ParseError, AssertionError) as e:
                 # For some reason `pycparser` uses `assert`s in places
                 # where there should have been a check.
-                flutes.log(
+                logging.error(
                     f"{repo_full_name}: Parser error when processing file "
-                    f"{code_path} ({sha}): {str(e)}",
-                    "error",
+                    f"{code_path} ({sha}): {str(e)}"
                 )
                 has_error = True
                 continue  # ignore parsing errors
@@ -396,10 +397,9 @@ def match_functions(
                 try:
                     decompiled_data = json.loads(j)
                 except json.JSONDecodeError as e:
-                    flutes.log(
+                    logging.error(
                         f"{repo_full_name}: Decode error when reading JSON file"
-                        f"at {json_path}: {str(e)}",
-                        "error",
+                        f"at {json_path}: {str(e)}"
                     )
                     continue
                 decompiled_code = decompiled_data["raw_code"]
@@ -414,10 +414,9 @@ def match_functions(
                         break
                 else:
                     # No way this is happening, right?
-                    flutes.log(
+                    logging.error(
                         f"{repo_full_name}: Could not find valid identifier prefix "
-                        f"for {func_name} in {code_path} ({sha})",
-                        "error",
+                        f"for {func_name} in {code_path} ({sha})"
                     )
                     continue
                 # (var_id) -> (decompiled_name, original_name)
@@ -471,7 +470,7 @@ def match_functions(
                 )
                 if len(e.args) > 0:
                     msg += ":\n" + str(e)
-                flutes.log(msg, "error")
+                logging.error(msg)
                 has_error = True
                 continue
 
@@ -483,10 +482,9 @@ def match_functions(
                     code_to_parse, parser.clex.cached_tokens
                 )
             except (ValueError, pycparser.c_parser.ParseError) as e:
-                flutes.log(
+                logging.error(
                     f"{repo_full_name}: Could not parse decompiled code for "
-                    f"{code_path} ({sha}): {str(e)}",
-                    "error",
+                    f"{code_path} ({sha}): {str(e)}"
                 )
                 has_error = True
 
@@ -555,25 +553,26 @@ def match_functions(
                     matched_functions.append(matched_func)
 
     # Cleanup the folders; if errors occurred, keep the preprocessed code.
-    status = (
-        "success"
-        if not has_error and len(matched_functions) > 0
-        else ("warning" if not has_error or len(matched_functions) > 0 else "error")
-    )
+    if not has_error and len(matched_functions) > 0:
+        status = logging.INFO
+    elif not has_error or len(matched_functions) > 0:
+        status = logging.WARNING
+    else:
+        status = logging.ERROR
+
     shutil.rmtree(repo_dir)
 
     end_time = time.time()
     funcs_without_asts = sum(
         matched_func.decompiled_ast_json is None for matched_func in matched_functions
     )
-    flutes.log(
-        f"[{end_time - start_time:6.2f}s] "
+    logging.log(
+        level=status,
+        msg=f"[{end_time - start_time:6.2f}s] "
         f"{repo_full_name}: "
         f"Files found: {files_found}/{total_files}, "
         f"functions matched: {len(matched_functions)}/{functions_found} "
         f"({funcs_without_asts} w/o ASTs)",
-        status,
-        force_console=True,
     )
     return Result(
         repo_owner=repo_info.repo_owner,
@@ -691,17 +690,14 @@ def main() -> None:
         if args.n_procs == 0:
             globals()["match_functions"] = match_functions.__wrapped__
 
-    if not args.verbose:
-        flutes.set_logging_level("quiet", console=True, file=False)
-    flutes.set_log_file(args.log_file)
-    flutes.log("Running with arguments:\n" + args.to_string(), force_console=True)
+    if args.verbose:
+        args.logging_level = logging.DEBUG
+
+    init_logger(args)
+    logging.info("Running with arguments:\n" + args.to_string())
 
     if os.path.exists(args.temp_dir):
-        flutes.log(
-            f"Removing contents of temporary folder '{args.temp_dir}'...",
-            "warning",
-            force_console=True,
-        )
+        logging.warning(f"Removing contents of temporary folder '{args.temp_dir}'...")
         ghcc.utils.run_docker_command(
             ["rm", "-rf", "/usr/src/*"],
             user=0,
@@ -740,9 +736,8 @@ def main() -> None:
             if result is None:
                 # Exception occurred.
                 if args.exit_on_exception:
-                    flutes.log(
-                        "Exception occurred, exiting because 'exit_on_exception' is True",
-                        "warning",
+                    logging.warning(
+                        "Exception occurred, exiting because 'exit_on_exception' is True"
                     )
                     break
                 continue
@@ -777,10 +772,9 @@ def main() -> None:
             func_count += len(result.matched_functions)
             func_without_ast_count += result.funcs_without_asts
             if repo_count % 100 == 0:
-                flutes.log(
+                logging.info(
                     f"Processed {repo_count} repositories, {func_count} functions matched "
-                    f"({func_without_ast_count} w/o AST)",
-                    force_console=True,
+                    f"({func_without_ast_count} w/o AST)"
                 )
 
 
