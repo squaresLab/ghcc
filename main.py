@@ -519,14 +519,14 @@ class MetaInfo:
         return msg
 
 
-def init_logger() -> None:
+def init_logger(args: Arguments) -> None:
     coloredlogs.DEFAULT_FIELD_STYLES["levelname"]["color"] = "cyan"
     coloredlogs.install(
         level=args.logging_level, fmt=LOG_FORMAT,
     )
 
 
-if __name__ == "__main__":
+def main() -> None:
     if not ghcc.utils.verify_docker_image(verbose=True):
         exit(1)
 
@@ -535,7 +535,7 @@ if __name__ == "__main__":
         # Only do this on the single-threaded case.
         flutes.register_ipython_excepthook()
 
-    init_logger()
+    init_logger(args)
 
     logging.info("Running with arguments:\n" + args.to_string())
 
@@ -632,3 +632,7 @@ if __name__ == "__main__":
                     logging.info(repr(meta_info))
 
         logging.info(repr(meta_info))
+
+
+if __name__ == "__main__":
+    main()
