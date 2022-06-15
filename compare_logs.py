@@ -4,11 +4,14 @@ import sys
 from collections import defaultdict
 from typing import Dict, Tuple
 
-import flutes
+import logging
+from ghcc.logging import init_logger
 
 DiffDict = Dict[str, Tuple[int, int]]
 
 TAGS = ["n_success", "n_total"]
+
+init_logger()
 
 
 def parse_logs(path: str) -> Dict[str, Dict[str, int]]:
@@ -54,11 +57,11 @@ def compare_logs(
 ) -> Dict[str, DiffDict]:
     for repo_name in info_new:
         if repo_name not in info_old:
-            flutes.log(f"{repo_name} missing in OLD log", "error")
+            logging.error(f"{repo_name} missing in OLD log")
     repo_diff: Dict[str, DiffDict] = defaultdict(dict)
     for repo_name in info_old:
         if repo_name not in info_new:
-            flutes.log(f"{repo_name} missing in NEW", "error")
+            logging.error(f"{repo_name} missing in NEW")
             continue
         old_repo_info = info_old[repo_name]
         new_repo_info = info_new[repo_name]
@@ -70,7 +73,7 @@ def compare_logs(
                 difference.append(f"{tag} {old_val}->{new_val}")
                 repo_diff[repo_name][tag] = (old_val, new_val)
         if len(difference) > 0:
-            flutes.log(f"{repo_name}: {', '.join(difference)}")
+            logging.info(f"{repo_name}: {', '.join(difference)}")
     return repo_diff
 
 
