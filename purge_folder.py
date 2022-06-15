@@ -3,7 +3,8 @@ import argparse
 import os
 import subprocess
 
-import flutes
+import logging
+from ghcc.logging import init_logger
 
 import ghcc
 
@@ -11,6 +12,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("folder", type=str)  # the folder to clean up
 parser.add_argument("-y", action="store_true", default=False)  # yes
 args = parser.parse_args()
+init_logger()
 
 try:
     parent = os.path.abspath(os.path.join(args.folder, ".."))
@@ -26,8 +28,8 @@ try:
             directory_mapping={parent: "/usr/src"},
         )
 except subprocess.CalledProcessError as e:
-    flutes.log(f"Command failed with retcode {e.returncode}", "error")
+    logging.error(f"Command failed with retcode {e.returncode}")
     output = e.output.decode("utf-8")
     if len(output) > 200:
         output = output[:200] + "... (omitted)"
-    flutes.log("Captured output: " + output)
+    logging.info("Captured output: " + output)
