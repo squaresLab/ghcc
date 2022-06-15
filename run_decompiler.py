@@ -21,9 +21,14 @@ import flutes
 import tqdm
 from mypy_extensions import TypedDict
 
+import logging
+from ghcc.logging import init_logger
+
 import ghcc
 
 EnvDict = Dict[str, str]
+
+init_logger()
 
 
 class Arguments(argtyped.Arguments):
@@ -121,7 +126,7 @@ class DecompilationResult(NamedTuple):
 
 def exception_handler(e, binary_info: BinaryInfo):
     binary_path = binary_info["path"]
-    flutes.log_exception(e, f"Exception occurred when processing {binary_path}")
+    logging.exception(f"Exception occurred when processing {binary_path}")
 
 
 @flutes.exception_wrapper(exception_handler)
